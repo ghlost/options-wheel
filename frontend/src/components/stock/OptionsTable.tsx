@@ -3,6 +3,7 @@ import { ChevronRight } from 'lucide-react';
 import type { OptionContract } from '../../types/options';
 import type { AddTradeRequest } from '../../types/portfolio';
 import { formatCurrency, formatDate, formatNumber, formatPercent, formatVolumeToOI } from '../../utils/formatters';
+import { probabilityOfProfit } from '../../../../shared/utils/blackScholes.js';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { clsx } from 'clsx';
@@ -32,6 +33,28 @@ function yieldColor(y: number) {
   return 'text-slate-400';
 }
 
+function popColor(p: number) {
+  if (p >= 0.7) return 'text-emerald-400';
+  if (p >= 0.5) return 'text-yellow-400';
+  return 'text-red-400';
+}
+
+function PopCell({ contract, underlyingPrice }: { contract: OptionContract; underlyingPrice: number }) {
+  const pop = probabilityOfProfit(
+    underlyingPrice,
+    contract.strikePrice,
+    contract.daysToExpiration,
+    contract.impliedVolatility,
+    contract.contractType,
+  );
+  if (pop === 0) return <span className="text-slate-600">—</span>;
+  return (
+    <span className={clsx('font-semibold', popColor(pop))}>
+      {(pop * 100).toFixed(1)}%
+    </span>
+  );
+}
+
 function YieldCell({ contract, underlyingPrice }: { contract: OptionContract; underlyingPrice: number }) {
   const divisor = contract.contractType === 'put' ? contract.strikePrice : underlyingPrice;
   const divisorLabel = contract.contractType === 'put' ? 'strike' : 'price';
@@ -50,8 +73,10 @@ function YieldCell({ contract, underlyingPrice }: { contract: OptionContract; un
 
 export function OptionsTable({ contracts, underlyingPrice, underlyingTicker, onAddTrade }: Props) {
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [showItm, setShowItm] = useState(false);
   const [addingContract, setAddingContract] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
+  const [customBid, setCustomBid] = useState<string>('');
   const [notes, setNotes] = useState('');
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
@@ -62,13 +87,20 @@ export function OptionsTable({ contracts, underlyingPrice, underlyingTicker, onA
 
   const contractType = contracts[0].contractType;
   const grouped = groupByStrike(contracts);
-  const strikes = [...grouped.keys()].sort((a, b) => a - b);
-  const detailColSpan = onAddTrade ? 9 : 8;
+  const allStrikes = [...grouped.keys()].sort((a, b) => a - b);
+
+  const isItm = (strike: number) =>
+    contractType === 'put' ? strike >= underlyingPrice : strike <= underlyingPrice;
+
+  const itmStrikes = allStrikes.filter(isItm);
+  const strikes = showItm ? allStrikes : allStrikes.filter(s => !isItm(s));
+  const detailColSpan = onAddTrade ? 10 : 9;
 
   async function handleConfirmAdd(contract: OptionContract) {
     if (!onAddTrade || !underlyingTicker) return;
     setAdding(true);
     setAddError(null);
+    const openPrice = parseFloat(customBid) || contract.bid;
     try {
       await onAddTrade({
         contract_symbol: contract.ticker,
@@ -77,12 +109,13 @@ export function OptionsTable({ contracts, underlyingPrice, underlyingTicker, onA
         strike_price: contract.strikePrice,
         expiration_date: contract.expirationDate,
         quantity: qty,
-        open_price: contract.bid,
+        open_price: openPrice,
         underlying_price_at_open: underlyingPrice,
         notes: notes.trim() || undefined,
       });
       setAddingContract(null);
       setQty(1);
+      setCustomBid('');
       setNotes('');
     } catch (e) {
       setAddError(e instanceof Error ? e.message : 'Failed to add trade');
@@ -94,6 +127,7 @@ export function OptionsTable({ contracts, underlyingPrice, underlyingTicker, onA
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
+
         <thead>
           <tr className="border-b border-slate-700 text-slate-400 font-medium">
             <th className="px-2 py-2 text-left">Strike</th>
@@ -106,7 +140,7 @@ export function OptionsTable({ contracts, underlyingPrice, underlyingTicker, onA
         <tbody>
           {strikes.map(strike => {
             const group = grouped.get(strike)!;
-            const itm = contractType === 'put' ? strike >= underlyingPrice : strike <= underlyingPrice;
+            const itm = isItm(strike);
             const best = group.reduce((b, c) => c.premiumYield > b.premiumYield ? c : b, group[0]);
             const isOpen = expanded === strike;
 
@@ -150,6 +184,7 @@ export function OptionsTable({ contracts, underlyingPrice, underlyingTicker, onA
                               <th className="px-3 py-2 text-right font-medium">OI</th>
                               <th className="px-3 py-2 text-right font-medium">V/OI</th>
                               <th className="px-3 py-2 text-right font-medium">Yield%</th>
+                              <th className="px-3 py-2 text-right font-medium">PoP</th>
                               {onAddTrade && <th className="px-3 py-2" />}
                             </tr>
                           </thead>
@@ -167,10 +202,13 @@ export function OptionsTable({ contracts, underlyingPrice, underlyingTicker, onA
                                   <td className="px-3 py-1.5 text-right">
                                     <YieldCell contract={c} underlyingPrice={underlyingPrice} />
                                   </td>
+                                  <td className="px-3 py-1.5 text-right">
+                                    <PopCell contract={c} underlyingPrice={underlyingPrice} />
+                                  </td>
                                   {onAddTrade && (
                                     <td className="px-3 py-1.5 text-right">
                                       <button
-                                        onClick={() => { setAddingContract(c.ticker); setQty(1); setNotes(''); setAddError(null); }}
+                                        onClick={() => { setAddingContract(c.ticker); setQty(1); setCustomBid(c.bid.toFixed(2)); setNotes(''); setAddError(null); }}
                                         className="text-indigo-400 hover:text-indigo-300 font-bold text-sm leading-none"
                                         title="Add as trade"
                                       >+</button>
@@ -191,6 +229,15 @@ export function OptionsTable({ contracts, underlyingPrice, underlyingTicker, onA
                                           onChange={e => setQty(Math.max(1, parseInt(e.target.value) || 1))}
                                           className="w-16 py-0.5 px-2 text-xs"
                                         />
+                                        <span className="text-slate-400">Bid:</span>
+                                        <Input
+                                          type="number"
+                                          min={0}
+                                          step={0.01}
+                                          value={customBid}
+                                          onChange={e => setCustomBid(e.target.value)}
+                                          className="w-20 py-0.5 px-2 text-xs"
+                                        />
                                         <span className="text-slate-400">Notes:</span>
                                         <Input
                                           value={notes}
@@ -199,7 +246,7 @@ export function OptionsTable({ contracts, underlyingPrice, underlyingTicker, onA
                                           className="w-36 py-0.5 px-2 text-xs"
                                         />
                                         <span className="text-slate-500 text-xs">
-                                          Premium: {formatCurrency(c.bid * 100 * qty)}
+                                          Premium: {formatCurrency((parseFloat(customBid) || c.bid) * 100 * qty)}
                                           {c.contractType === 'put' && (
                                             <>{' · '}Cash reserved: {formatCurrency(c.strikePrice * 100 * qty)}</>
                                           )}
@@ -228,6 +275,16 @@ export function OptionsTable({ contracts, underlyingPrice, underlyingTicker, onA
           })}
         </tbody>
       </table>
+      {itmStrikes.length > 0 && (
+        <button
+          onClick={() => setShowItm(v => !v)}
+          className="w-full mt-1 py-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors text-center"
+        >
+          {showItm
+            ? `Hide ${itmStrikes.length} ITM strike${itmStrikes.length !== 1 ? 's' : ''}`
+            : `Show ${itmStrikes.length} ITM strike${itmStrikes.length !== 1 ? 's' : ''}`}
+        </button>
+      )}
     </div>
   );
 }

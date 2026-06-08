@@ -1,6 +1,7 @@
 import { cacheGet, cacheSet } from '../cache/memoryCache.js';
 import type { StockQuote } from '../../../shared/types/quote.js';
 import type { OptionsChain, OptionContract } from '../../../shared/types/options.js';
+import { impliedVolatility } from '../../../shared/utils/blackScholes.js';
 
 const NASDAQ_BASE = 'https://api.nasdaq.com/api';
 const QUOTE_TTL = 15 * 60;
@@ -167,6 +168,7 @@ export async function fetchOptionsChainForDates(
 
     const callAsk = parseNum(row.c_Ask);
     const callBid = (parseNum(row.c_Bid) + callAsk) / 2;
+    const callIV = impliedVolatility(callBid, currentPrice, strike, dte, 'call');
     calls.push({
       ticker: `${baseKey}-C`,
       strikePrice: strike,
@@ -176,7 +178,7 @@ export async function fetchOptionsChainForDates(
       ask: callAsk,
       volume: parseVol(row.c_Volume),
       openInterest: parseVol(row.c_Openinterest),
-      impliedVolatility: 0,
+      impliedVolatility: callIV,
       delta: null,
       theta: null,
       premiumYield: calcPremiumYield(callBid, strike, currentPrice, 'call'),
@@ -186,6 +188,7 @@ export async function fetchOptionsChainForDates(
 
     const putAsk = parseNum(row.p_Ask);
     const putBid = (parseNum(row.p_Bid) + putAsk) / 2;
+    const putIV = impliedVolatility(putBid, currentPrice, strike, dte, 'put');
     puts.push({
       ticker: `${baseKey}-P`,
       strikePrice: strike,
@@ -195,7 +198,7 @@ export async function fetchOptionsChainForDates(
       ask: putAsk,
       volume: parseVol(row.p_Volume),
       openInterest: parseVol(row.p_Openinterest),
-      impliedVolatility: 0,
+      impliedVolatility: putIV,
       delta: null,
       theta: null,
       premiumYield: calcPremiumYield(putBid, strike, currentPrice, 'put'),

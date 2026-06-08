@@ -5,10 +5,11 @@ import { StockCard } from '../stock/StockCard';
 
 interface Props {
   stocks: WatchedStock[];
+  tickerOrder: string[];
   onAddTrade?: (req: AddTradeRequest) => Promise<void>;
 }
 
-export function Dashboard({ stocks, onAddTrade }: Props) {
+export function Dashboard({ stocks, tickerOrder, onAddTrade }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const toggle = useCallback((ticker: string) => {
@@ -32,7 +33,12 @@ export function Dashboard({ stocks, onAddTrade }: Props) {
   const sorted = [...stocks].sort((a, b) => {
     const ac = collapsed.has(a.ticker) ? 1 : 0;
     const bc = collapsed.has(b.ticker) ? 1 : 0;
-    return ac - bc;
+    if (ac !== bc) return ac - bc;
+    const ai = tickerOrder.indexOf(a.ticker);
+    const bi = tickerOrder.indexOf(b.ticker);
+    const aIdx = ai === -1 ? Infinity : ai;
+    const bIdx = bi === -1 ? Infinity : bi;
+    return aIdx - bIdx;
   });
 
   return (
