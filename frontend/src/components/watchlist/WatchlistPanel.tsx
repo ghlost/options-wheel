@@ -11,9 +11,11 @@ interface Props {
   onSelect: (ticker: string) => void;
   onAdd: (ticker: string) => Promise<void>;
   onRemove: (ticker: string) => Promise<void>;
+  onSharesChange: (ticker: string, shares: number) => void;
+  onAvgCostChange: (ticker: string, avgCost: number | null) => void;
 }
 
-export function WatchlistPanel({ stocks, tickerOrder, onReorder, activeTicker, onSelect, onAdd, onRemove }: Props) {
+export function WatchlistPanel({ stocks, tickerOrder, onReorder, activeTicker, onSelect, onAdd, onRemove, onSharesChange, onAvgCostChange }: Props) {
   const dragIndex = useRef<number | null>(null);
 
   // Render in tickerOrder, falling back to any not-yet-ordered tickers at the end
@@ -60,6 +62,8 @@ export function WatchlistPanel({ stocks, tickerOrder, onReorder, activeTicker, o
                   active={activeTicker === ticker}
                   onClick={() => onSelect(ticker)}
                   onRemove={() => onRemove(ticker)}
+                  onSharesChange={shares => onSharesChange(ticker, shares)}
+                  onAvgCostChange={avgCost => onAvgCostChange(ticker, avgCost)}
                   draggable
                   onDragStart={() => handleDragStart(i)}
                   onDragOver={e => handleDragOver(e, i)}

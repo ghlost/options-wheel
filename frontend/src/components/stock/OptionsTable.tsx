@@ -39,6 +39,31 @@ function popColor(p: number) {
   return 'text-red-400';
 }
 
+function rawBidOf(c: OptionContract) {
+  return Math.max(0, 2 * c.bid - c.ask);
+}
+
+function isWideSpread(c: OptionContract) {
+  return rawBidOf(c) < c.bid * 0.5;
+}
+
+function BidCell({ contract }: { contract: OptionContract }) {
+  const raw = rawBidOf(contract);
+  const wide = isWideSpread(contract);
+  if (wide) {
+    return (
+      <span
+        className="text-amber-400 font-mono"
+        title={`Wide spread — mid: ${formatCurrency(contract.bid)}, ask: ${formatCurrency(contract.ask)}`}
+      >
+        {formatCurrency(raw)}{' '}
+        <span className="text-amber-600/70 text-[10px]">(bid)</span>
+      </span>
+    );
+  }
+  return <span className="font-mono">{formatCurrency(contract.bid)}</span>;
+}
+
 function PopCell({ contract, underlyingPrice }: { contract: OptionContract; underlyingPrice: number }) {
   const pop = probabilityOfProfit(
     underlyingPrice,
@@ -82,7 +107,7 @@ export function OptionsTable({ contracts, underlyingPrice, underlyingTicker, onA
   const [addError, setAddError] = useState<string | null>(null);
 
   if (contracts.length === 0) {
-    return <p className="text-sm text-slate-500 py-4 text-center">No contracts found in the 28–60 day window.</p>;
+    return <p className="text-sm text-slate-500 py-4 text-center">No contracts found in the 14–60 day window.</p>;
   }
 
   const contractType = contracts[0].contractType;
@@ -163,7 +188,7 @@ export function OptionsTable({ contracts, underlyingPrice, underlyingTicker, onA
                   </td>
                   <td className="px-2 py-2 text-right">{group.length}</td>
                   <td className="px-2 py-2 text-right">{best.daysToExpiration}d</td>
-                  <td className="px-2 py-2 text-right font-mono">{formatCurrency(best.bid)}</td>
+                  <td className="px-2 py-2 text-right"><BidCell contract={best} /></td>
                   <td className="px-2 py-2 text-right">
                     <YieldCell contract={best} underlyingPrice={underlyingPrice} />
                   </td>
@@ -194,7 +219,7 @@ export function OptionsTable({ contracts, underlyingPrice, underlyingTicker, onA
                                 <tr className="border-b border-slate-700/30 last:border-0 text-slate-300">
                                   <td className="px-3 py-1.5 text-left">{formatDate(c.expirationDate)}</td>
                                   <td className="px-3 py-1.5 text-right text-slate-400">{c.daysToExpiration}d</td>
-                                  <td className="px-3 py-1.5 text-right font-mono">{formatCurrency(c.bid)}</td>
+                                  <td className="px-3 py-1.5 text-right"><BidCell contract={c} /></td>
                                   <td className="px-3 py-1.5 text-right font-mono text-slate-500">{formatCurrency(c.ask)}</td>
                                   <td className="px-3 py-1.5 text-right">{formatNumber(c.volume)}</td>
                                   <td className="px-3 py-1.5 text-right">{formatNumber(c.openInterest)}</td>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { WatchedStock } from '../types/watchlist';
-import { getWatchlist, addStock, removeStock } from '../api/stocks';
+import { getWatchlist, addStock, removeStock, updateShares as apiUpdateShares, updateAvgCost as apiUpdateAvgCost } from '../api/stocks';
 
 export function useWatchlist() {
   const [stocks, setStocks] = useState<WatchedStock[]>([]);
@@ -24,5 +24,15 @@ export function useWatchlist() {
     setStocks(prev => prev.filter(s => s.ticker !== ticker));
   }, []);
 
-  return { stocks, loading, error, add, remove };
+  const updateShares = useCallback(async (ticker: string, sharesOwned: number) => {
+    const updated = await apiUpdateShares(ticker, sharesOwned);
+    setStocks(prev => prev.map(s => s.ticker === ticker ? updated : s));
+  }, []);
+
+  const updateAvgCost = useCallback(async (ticker: string, avgCost: number | null) => {
+    const updated = await apiUpdateAvgCost(ticker, avgCost);
+    setStocks(prev => prev.map(s => s.ticker === ticker ? updated : s));
+  }, []);
+
+  return { stocks, loading, error, add, remove, updateShares, updateAvgCost };
 }

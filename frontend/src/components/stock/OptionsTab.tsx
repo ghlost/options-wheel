@@ -68,7 +68,7 @@ export function OptionsTab({ chain, onAddTrade }: Props) {
         </select>
         <span className="text-xs text-slate-600">{strikeCount} shown</span>
 
-        <span className="ml-auto text-xs text-slate-500 self-center">Data delayed · 28–60 DTE</span>
+        <span className="ml-auto text-xs text-slate-500 self-center">Data delayed · 14–60 DTE</span>
       </div>
       <OptionsTable
         contracts={contracts}

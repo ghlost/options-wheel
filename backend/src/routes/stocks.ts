@@ -6,7 +6,7 @@ const router = Router();
 
 router.get('/', (_req, res) => {
   const rows = db.prepare(
-    `SELECT id, ticker, notes, added_at FROM watched_stocks ORDER BY added_at DESC`
+    `SELECT id, ticker, notes, added_at, shares_owned, avg_cost FROM watched_stocks ORDER BY added_at DESC`
   ).all() as unknown as WatchedStock[];
   res.json(rows);
 });
@@ -31,6 +31,32 @@ router.post('/', (req, res) => {
       throw e;
     }
   }
+});
+
+router.patch('/:ticker/shares', (req, res) => {
+  const ticker = req.params.ticker.toUpperCase();
+  const { shares_owned } = req.body as { shares_owned: number };
+  if (typeof shares_owned !== 'number' || shares_owned < 0 || !Number.isInteger(shares_owned)) {
+    res.status(400).json({ error: 'shares_owned must be a non-negative integer' });
+    return;
+  }
+  db.prepare(`UPDATE watched_stocks SET shares_owned = ? WHERE ticker = ?`).run(shares_owned, ticker);
+  const row = db.prepare(`SELECT id, ticker, notes, added_at, shares_owned, avg_cost FROM watched_stocks WHERE ticker = ?`).get(ticker) as unknown as WatchedStock | undefined;
+  if (!row) { res.status(404).json({ error: 'Ticker not found' }); return; }
+  res.json(row);
+});
+
+router.patch('/:ticker/avg-cost', (req, res) => {
+  const ticker = req.params.ticker.toUpperCase();
+  const { avg_cost } = req.body as { avg_cost: number | null };
+  if (avg_cost !== null && (typeof avg_cost !== 'number' || avg_cost < 0)) {
+    res.status(400).json({ error: 'avg_cost must be a non-negative number or null' });
+    return;
+  }
+  db.prepare(`UPDATE watched_stocks SET avg_cost = ? WHERE ticker = ?`).run(avg_cost ?? null, ticker);
+  const row = db.prepare(`SELECT id, ticker, notes, added_at, shares_owned, avg_cost FROM watched_stocks WHERE ticker = ?`).get(ticker) as unknown as WatchedStock | undefined;
+  if (!row) { res.status(404).json({ error: 'Ticker not found' }); return; }
+  res.json(row);
 });
 
 router.delete('/:ticker', (req, res) => {

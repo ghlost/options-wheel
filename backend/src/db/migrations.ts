@@ -55,6 +55,8 @@ export function runMigrations(): void {
 
   // Additive column migrations (safe to re-run)
   try { db.exec(`ALTER TABLE price_snapshots ADD COLUMN open_interest INTEGER`); } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE watched_stocks ADD COLUMN shares_owned INTEGER NOT NULL DEFAULT 0`); } catch { /* already exists */ }
+  try { db.exec(`ALTER TABLE watched_stocks ADD COLUMN avg_cost REAL`); } catch { /* already exists */ }
 
   console.log('[db] Migrations complete');
 }

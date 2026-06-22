@@ -9,6 +9,7 @@ router.get('/', async (req: Request<{ ticker: string }>, res: Response, next: Ne
     const ticker = req.params.ticker.toUpperCase();
     const quote = await fetchStockQuote(ticker);
     const chain = await fetchOptionsChain(ticker, quote.price);
+    chain.changePercent = quote.changePercent;
     res.json(chain);
   } catch (e) {
     next(e);

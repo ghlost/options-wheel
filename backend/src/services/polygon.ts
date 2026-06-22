@@ -210,6 +210,7 @@ export async function fetchOptionsChainForDates(
   const chain: OptionsChain = {
     ticker: ticker.toUpperCase(),
     underlyingPrice: currentPrice,
+    changePercent: 0,
     calls,
     puts,
     fetchedAt: new Date().toISOString(),
@@ -221,7 +222,7 @@ export async function fetchOptionsChainForDates(
 
 export async function fetchOptionsChain(ticker: string, currentPrice: number): Promise<OptionsChain> {
   const now = Date.now();
-  const from = new Date(now + 28 * 86400 * 1000).toISOString().slice(0, 10);
+  const from = new Date(now + 14 * 86400 * 1000).toISOString().slice(0, 10);
   const to = new Date(now + 60 * 86400 * 1000).toISOString().slice(0, 10);
   return fetchOptionsChainForDates(ticker, currentPrice, from, to);
 }

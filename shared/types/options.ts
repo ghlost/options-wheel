@@ -20,6 +20,7 @@ export interface OptionContract {
 export interface OptionsChain {
   ticker: string;
   underlyingPrice: number;
+  changePercent: number;
   calls: OptionContract[];
   puts: OptionContract[];
   fetchedAt: string;

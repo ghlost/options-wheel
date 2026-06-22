@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
 import { useWatchlist } from './hooks/useWatchlist';
 import { usePortfolio } from './hooks/usePortfolio';
+import { useRecommendations } from './hooks/useRecommendations';
 import { WatchlistPanel } from './components/watchlist/WatchlistPanel';
 import { Dashboard } from './components/dashboard/Dashboard';
 import { PortfolioDashboard } from './components/portfolio/PortfolioDashboard';
@@ -38,8 +39,14 @@ export default function App() {
     history.pushState(null, '', path);
     setView(v);
   }
-  const { stocks, loading, error, add, remove } = useWatchlist();
+  const { stocks, loading, error, add, remove, updateShares, updateAvgCost } = useWatchlist();
   const portfolio = usePortfolio();
+  const recs = useRecommendations(stocks);
+
+  function handleSharesChange(ticker: string, shares: number) {
+    updateShares(ticker, shares);
+    recs.refresh();
+  }
 
   // Custom order persisted to localStorage; synced when watchlist changes
   const [tickerOrder, setTickerOrder] = useState<string[]>(() => {
@@ -129,6 +136,8 @@ export default function App() {
                 }}
                 onAdd={add}
                 onRemove={remove}
+                onSharesChange={handleSharesChange}
+                onAvgCostChange={updateAvgCost}
               />
             )}
           </div>
@@ -145,6 +154,11 @@ export default function App() {
               onClose={portfolio.closeTrade}
               onDelete={portfolio.deleteTrade}
               onRefresh={portfolio.refresh}
+              recommendations={recs.recommendations}
+              recsLoading={recs.loading}
+              recsError={recs.error}
+              onRecsRefresh={recs.refresh}
+              onAddTrade={portfolio.addTrade}
             />
           )}
         </main>

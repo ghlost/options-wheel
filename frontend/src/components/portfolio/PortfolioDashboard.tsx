@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import type { TradeWithSnapshots, CloseTradeRequest } from '../../types/portfolio';
+import type { TradeWithSnapshots, CloseTradeRequest, AddTradeRequest } from '../../types/portfolio';
+import type { Recommendation } from '../../../../shared/types/recommendations.js';
 import { PortfolioSummaryBar } from './PortfolioSummaryBar';
+import { RecommendationsPanel } from './RecommendationsPanel';
 import { TradeRow } from './TradeRow';
 import { Spinner } from '../ui/Spinner';
 import { useSnapshotRecorder } from '../../hooks/useSnapshotRecorder';
@@ -13,6 +15,11 @@ interface Props {
   onClose: (id: number, req: CloseTradeRequest) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   onRefresh: () => void;
+  recommendations: Recommendation[];
+  recsLoading: boolean;
+  recsError: string | null;
+  onRecsRefresh: () => void;
+  onAddTrade: (req: AddTradeRequest) => Promise<unknown>;
 }
 
 type Tab = 'open' | 'closed';
@@ -23,7 +30,7 @@ const COLUMNS = [
   'P&L', 'P&L%', 'Ann. Ret.', '',
 ];
 
-export function PortfolioDashboard({ trades, loading, error, onClose, onDelete, onRefresh }: Props) {
+export function PortfolioDashboard({ trades, loading, error, onClose, onDelete, onRefresh, recommendations, recsLoading, recsError, onRecsRefresh, onAddTrade }: Props) {
   const [tab, setTab] = useState<Tab>('open');
 
   useSnapshotRecorder(trades, onRefresh);
@@ -43,6 +50,16 @@ export function PortfolioDashboard({ trades, loading, error, onClose, onDelete, 
   return (
     <div className="flex flex-col gap-6 max-w-full">
       <PortfolioSummaryBar trades={trades} />
+
+      {(recsLoading || recommendations.length > 0) && (
+        <RecommendationsPanel
+          recommendations={recommendations}
+          loading={recsLoading}
+          error={recsError}
+          onRefresh={onRecsRefresh}
+          onAddTrade={onAddTrade}
+        />
+      )}
 
       <div>
         <div className="flex gap-1 mb-3">

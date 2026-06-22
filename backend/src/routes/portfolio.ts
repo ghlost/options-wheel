@@ -52,7 +52,11 @@ function computeFields(
     ? (unrealized_pnl / premium_received) * 100 : null;
 
   const days_held = daysBetween(trade.opened_at.slice(0, 10), endDate);
-  const annualized_basis = cash_reserved > 0 ? cash_reserved : premium_received;
+  // Puts: yield on reserved cash (strike × 100 × qty)
+  // Calls: yield on share value at open (underlying_price_at_open × 100 × qty) — the collateral pledged
+  const annualized_basis = trade.contract_type === 'put'
+    ? cash_reserved
+    : trade.underlying_price_at_open * 100 * trade.quantity;
   const annualized_return = unrealized_pnl !== null && days_held > 0 && annualized_basis > 0
     ? (unrealized_pnl / annualized_basis) * (365 / days_held) * 100 : null;
 
